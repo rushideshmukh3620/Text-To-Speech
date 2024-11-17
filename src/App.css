@@ -42,6 +42,7 @@ button {
 }
 
 .highlighted-word {
-  color: blue;
+  color: yellow;
+  background-color: black;
   font-weight: bold;
 }

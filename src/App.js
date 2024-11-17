@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import speakingAvatar from "./speaking-avatar.png"; // Speaking avatar image
-import idleAvatar from "./idle-avatar.png"; // Idle avatar image
+import speakingAvatar from "./speaking-avatar.png";
+import idleAvatar from "./idle-avatar.png";
 
 const TextToSpeechComponent = ({ text }) => {
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
@@ -10,13 +10,21 @@ const TextToSpeechComponent = ({ text }) => {
 
   const detectLanguage = (text) => {
     const defaultLang = "en-US";
-    const hindiRegex = /[\u0900-\u097F]/; // Unicode for Hindi/Marathi
+    const hindiRegex = /[\u0900-\u097F]/; // Unicode range for Hindi/Marathi
     if (hindiRegex.test(text)) return "hi-IN";
     return defaultLang;
   };
 
+  const resetSpeech = () => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+    setIsPaused(false);
+    setCurrentWordIndex(-1);
+    setResumeIndex(0);
+  };
+
   const speakText = (text, lang, startIndex = 0) => {
-    const phrases = text.split(/\s+/); // Split into words
+    const phrases = text.split(/\s+/); // Split text into words
     let index = startIndex;
 
     const speakPhrase = () => {
@@ -37,23 +45,17 @@ const TextToSpeechComponent = ({ text }) => {
         };
 
         speech.onend = () => {
-          const delay = phrase.match(/[.!?]/)
-            ? 30 // Short delay for periods, question marks
-            : phrase.match(/[,;]/)
-            ? 20 // Shorter delay for commas, semicolons
-            : 5; // Minimal delay for spaces
+          const delay = phrase.match(/[.!?]/) ? 5 : 0; // Punctuation vs word gap
           setTimeout(() => {
             index++;
-            setResumeIndex(index); // Save progress for resume
+            setResumeIndex(index); // Save progress for resuming
             speakPhrase();
           }, delay);
         };
 
         window.speechSynthesis.speak(speech);
       } else {
-        setIsSpeaking(false);
-        setIsPaused(false);
-        setCurrentWordIndex(-1);
+        resetSpeech();
       }
     };
 
@@ -71,22 +73,20 @@ const TextToSpeechComponent = ({ text }) => {
         setIsPaused(true);
       }
     } else {
+      resetSpeech();
       speakText(text, lang, resumeIndex);
     }
   };
 
-  const handleStop = () => {
-    window.speechSynthesis.cancel();
-    setIsSpeaking(false);
-    setIsPaused(false);
-    setResumeIndex(0); // Reset to start
-  };
-
   useEffect(() => {
     return () => {
-      window.speechSynthesis.cancel(); // Cleanup on unmount
+      resetSpeech(); // Cleanup on unmount
     };
   }, []);
+
+  useEffect(() => {
+    resetSpeech(); // Stop speaking when text changes
+  }, [text]);
 
   return (
     <div>
@@ -99,10 +99,7 @@ const TextToSpeechComponent = ({ text }) => {
       </div>
       <div>
         <button onClick={handlePlayPause}>
-          {isSpeaking && !isPaused ? "Pause" : "Play"}
-        </button>
-        <button onClick={handleStop} disabled={!isSpeaking}>
-          Stop
+          {isSpeaking && !isPaused ? "Pause" : isPaused ? "Resume" : "Play"}
         </button>
       </div>
       <div className="text-container">
